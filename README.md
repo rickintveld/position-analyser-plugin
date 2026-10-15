@@ -1,0 +1,1 @@
+# MT5 Position Analyser Claude Code Plugin
