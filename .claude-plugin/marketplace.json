@@ -1,0 +1,14 @@
+{
+  "name": "trading-rocket",
+  "description": "Trading Rocket: Claude Code plugins for traders",
+  "owner": {
+    "name": "Trading Rocket"
+  },
+  "plugins": [
+    {
+      "name": "rocket",
+      "source": "./",
+      "description": "/rocket:analyse - your MetaTrader 5 trades from the terminal logs, analysed and charted, with a live pipeline pane."
+    }
+  ]
+}

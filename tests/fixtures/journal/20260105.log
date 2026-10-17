@@ -1,0 +1,25 @@
+AB	0	09:00:00.123	Network	'11111111': authorized on Demo-Server1 through Access Point 2 (ping: 10.00 ms, build 5000)
+AB	0	09:00:10.123	Network	'11111111': terminal synchronized with Example Broker Ltd: 0 positions, 0 orders, 50 symbols, 0 spreads
+AB	0	09:00:20.123	Trades	'11111111': market sell 1 XAUUSD, close #999 buy 1 XAUUSD 1995.00
+AB	0	09:00:30.123	Trades	'11111111': accepted market sell 1 XAUUSD, close #999 buy 1 XAUUSD 1995.00
+AB	0	09:00:40.123	Trades	'11111111': deal #500 sell 1 XAUUSD at 2005.00 done (based on order #998)
+AB	0	09:00:50.123	Trades	'11111111': order #998 sell 1 / 1 XAUUSD at 2005.00 done in 12.000 ms
+AB	0	09:01:00.123	Trades	'11111111': market buy 1 XAUUSD sl: 2000.00 tp: 2030.00
+AB	0	09:01:10.123	Trades	'11111111': accepted market buy 1 XAUUSD sl: 2000.00 tp: 2030.00
+AB	0	09:01:20.123	Trades	'11111111': deal #501 buy 1 XAUUSD at 2010.00 done (based on order #1001)
+AB	0	09:01:30.123	Trades	'11111111': order #1001 buy 1 / 1 XAUUSD at 2010.00 done in 12.000 ms
+AB	0	09:01:40.123	Trades	'11111111': modify #1001 buy 1 XAUUSD sl: 2000.00, tp: 2030.00 -> sl: 2010.00, tp: 2030.00
+AB	0	09:01:50.123	Trades	'11111111': accepted modify #1001 buy 1 XAUUSD sl: 2000.00, tp: 2030.00 -> sl: 2010.00, tp: 2030.00
+AB	0	09:02:00.123	Trades	'11111111': modify #1001 buy 1 XAUUSD -> sl: 2010.00, tp: 2030.00 done in 11.000 ms
+AB	0	09:02:10.123	Trades	'11111111': failed market buy 5 XAUUSD sl: 1990.00 tp: 2040.00 [No money]
+AB	0	09:02:20.123	Trades	'11111111': take profit triggered #1001 buy 1 XAUUSD 2010.00 sl: 2010.00 tp: 2030.00 [#1002 sell 1 XAUUSD at 2030.00]
+AB	0	09:02:30.123	Trades	'11111111': deal #502 sell 1 XAUUSD at 2030.00 done (based on order #1002)
+AB	0	09:02:40.123	Trades	'11111111': market sell 0.5 EURUSD sl: 1.10500 tp: 1.09500
+AB	0	09:02:50.123	Trades	'11111111': deal #503 sell 0.5 EURUSD at 1.10000 done (based on order #1003)
+AB	0	09:03:00.123	Trades	'11111111': market buy 0.2 EURUSD, close #1003 sell 0.5 EURUSD 1.10000
+AB	0	09:03:10.123	Trades	'11111111': deal #504 buy 0.2 EURUSD at 1.09800 done (based on order #1004)
+AB	0	09:03:20.123	Trades	'11111111': stop loss triggered #1003 sell 0.3 EURUSD 1.10000 sl: 1.10500 [#1005 buy 0.3 EURUSD at 1.10500]
+AB	0	09:03:30.123	Trades	'11111111': deal #505 buy 0.3 EURUSD at 1.10500 done (based on order #1005)
+AB	0	09:03:40.123	Network	'22222222': authorized on Demo-Server2
+AB	0	09:03:50.123	Trades	'22222222': market buy 2 US30
+AB	0	09:04:00.123	Trades	'22222222': deal #600 buy 2 US30 at 42000.0 done (based on order #2001)
