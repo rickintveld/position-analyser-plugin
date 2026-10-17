@@ -1,68 +1,53 @@
 import type { EngineInterface, Register } from 'claude-code'
+import * as engine from './engine/pipeline'
+import type { Group, Job, JobStatus, Run, RunStatus, Stats } from './engine/types'
 
 // The live pane. While a run of /rocket:analyse works it draws the
 // run's pipeline (<home>/runs/<current>/status.json, kept by
-// bin/rocket) in a GitLab pipeline-graph style; once the run has
+// the engine, ./engine) in a GitLab pipeline-graph style; once the run has
 // finished with success the pipeline makes way for the charts of stats.json.
 // The top left holds the logo (assets/mascot.svg, assets/mascot.png).
 
-type JobStatus = 'pending' | 'running' | 'success' | 'failed' | 'warning' | 'skipped' | 'canceled'
-type RunStatus = 'running' | 'success' | 'failed' | 'canceled'
-
-type Job = { status: JobStatus; note: string; started_at: number | null; finished_at: number | null }
-
-type Run = {
-  id: string
-  range: { from: string; to: string }
-  accounts?: string[]
-  status: RunStatus
-  active_stage: string
-  summary: string
-  notes: { at: number; text: string }[]
-  started_at: number
-  finished_at: number | null
-  stages: { name: string; jobs: string[] }[]
-  jobs: Record<string, Job>
-}
-
-type Tally = { n: number; wins: number; losses: number; net: number | null; win_rate: number | null }
-
-type Group = {
-  id: string
-  label: string
-  trades: number
-  closed: number
-  open: number
-  failed: number
-  money: { ok: boolean; why?: string; currency?: string }
-  currency: string | null
-  wins: number
-  losses: number
-  breakeven: number
-  win_rate: number | null
-  net: number | null
-  avg_win: number | null
-  avg_loss: number | null
-  rrr: number | null
-  avg_r: number | null
-  planned_rr: number | null
-  profit_factor: number | null
-  best_symbol: (Tally & { symbol: string }) | null
-  by_symbol: (Tally & { symbol: string })[]
-  by_side: { buy: Tally; sell: Tally }
-  by_hour: (Tally & { hour: number })[]
-  by_day: (Tally & { date: string })[]
-  equity: { at: string; symbol: string; pnl: number; cum: number }[]
-  day_win_rate: number | null
-  largest_win: number | null
-  largest_loss: number | null
-  avg_hold_win: number | null
-  avg_hold_loss: number | null
-}
-
-type Stats = { range: { from: string; to: string }; groups: Group[] }
-
 type Segment = { text: string; color?: string; bg?: string; dim?: boolean; bold?: boolean }
+
+type ToolInput = {
+  action: string
+  from?: string
+  to?: string
+  date?: string
+  accounts?: string[]
+  paths?: string[]
+  contracts?: Record<string, number>
+  job?: string
+  status?: string
+  note?: string
+  summary?: string
+}
+
+const TOOL_DESCRIPTION =
+  'The engine of /rocket:analyse: MetaTrader 5 trades from the terminal logs on this machine (Windows, or wine on macOS/Linux), read-only. ' +
+  'Run the actions in order: start (from, to or date as YYYY-MM-DD, accounts), discover (paths: extra folders to search instead), read, ' +
+  'parse (contracts: {SYMBOL: size per lot}), analyse; then table (markdown per account) and trades (trades.json). ' +
+  'job (job, status, note) reports the report jobs table/story; note (note) adds a milestone; finish (status: success|failed|canceled, summary). ' +
+  'status returns the run. Each step reports its own jobs to the pane.'
+
+const TOOL_SCHEMA = {
+  type: 'object',
+  properties: {
+    action: { type: 'string', enum: ['start', 'discover', 'read', 'parse', 'analyse', 'table', 'trades', 'job', 'note', 'finish', 'status'] },
+    from: { type: 'string', description: 'start: first day, YYYY-MM-DD' },
+    to: { type: 'string', description: 'start: last day, YYYY-MM-DD' },
+    date: { type: 'string', description: 'start: one day, YYYY-MM-DD' },
+    accounts: { type: 'array', items: { type: 'string' }, description: 'start: only these MT5 account numbers' },
+    paths: { type: 'array', items: { type: 'string' }, description: 'discover: folders to search instead of the usual places' },
+    contracts: { type: 'object', additionalProperties: { type: 'number' }, description: 'parse: contract size per lot by symbol' },
+    job: { type: 'string', description: 'job: the job id (table, story)' },
+    status: { type: 'string', description: 'job: pending|running|success|failed|warning|skipped|canceled; finish: success|failed|canceled' },
+    note: { type: 'string', description: 'job, note: a short note for the pane' },
+    summary: { type: 'string', description: 'finish: one line for the pane' },
+  },
+  required: ['action'],
+}
 
 const PANE = 'rocket'
 const TITLE = 'Trading Rocket'
@@ -845,8 +830,22 @@ async function loadMascot($: EngineInterface) {
 
 // --- state -------------------------------------------------------------------
 
+// The environment the engine reads, by name (each read is listed by name).
+async function envOf($: EngineInterface): Promise<engine.Env> {
+  return {
+    OS: await $.env.get('OS'),
+    HOME: await $.env.get('HOME'),
+    USERPROFILE: await $.env.get('USERPROFILE'),
+    APPDATA: await $.env.get('APPDATA'),
+    ProgramFiles: await $.env.get('ProgramFiles'),
+    'ProgramFiles(x86)': await $.env.get('ProgramFiles(x86)'),
+    ROCKET_HOME: await $.env.get('ROCKET_HOME'),
+    ROCKET_MT5_PATHS: await $.env.get('ROCKET_MT5_PATHS'),
+  }
+}
+
 async function poll($: EngineInterface) {
-  home ??= (await $.env.get('ROCKET_HOME')) ?? `${(await $.env.get('HOME')) ?? ''}/.config/rocket`
+  home ??= engine.homeDir(await envOf($))
 
   const id = (await $.fs.read(`${home}/current`).catch(() => '')).trim()
   if (id === '') return
@@ -900,6 +899,7 @@ async function poll($: EngineInterface) {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await loadMascot($)
+    await $.tool.register({ name: 'mt5', description: TOOL_DESCRIPTION, inputSchema: TOOL_SCHEMA, isDeferred: false })
     await $.command.register({
       name: 'rocket-pane',
       description: 'Show the Trading Rocket pane (pipeline or charts of the last run)',
@@ -914,6 +914,42 @@ export const register: Register = on => {
     })
 
     return next(e)
+  })
+
+  // The engine of /rocket:analyse: one action per call, its answer as JSON (or
+  // markdown for `table`); a failure comes back as an error result.
+  on('tool.call', { tool: /^mcp__rocket__mt5$/ }, async ($, e) => {
+    const input = e as unknown as ToolInput
+    const io: engine.Io = {
+      read: path => $.fs.read(path),
+      readBytes: path => $.fs.read(path, { as: 'bytes' }),
+      write: (path, text) => $.fs.write(path, text),
+      list: path => $.fs.list(path),
+      exists: path => $.fs.exists(path),
+      env: await envOf($),
+    }
+    try {
+      const answer = await (async () => {
+        switch (input.action) {
+          case 'start': return engine.start(io, input)
+          case 'discover': return engine.discover(io, input.paths ?? [])
+          case 'read': return engine.read(io)
+          case 'parse': return engine.parse(io, input.contracts ?? {})
+          case 'analyse': return engine.analyse(io)
+          case 'table': return engine.table(io)
+          case 'trades': return engine.readTrades(io)
+          case 'job': return engine.job(io, input.job ?? '', input.status ?? '', input.note ?? '').then(() => ({ ok: true }))
+          case 'note': return engine.note(io, input.note ?? '').then(() => ({ ok: true }))
+          case 'finish': return engine.finish(io, input.status ?? '', input.summary ?? '')
+          case 'status': return (await engine.current(io)).run
+          default: throw new Error(`unknown action ${String(input.action)}`)
+        }
+      })()
+      await poll($)
+      return { result: typeof answer === 'string' ? answer : JSON.stringify(answer) }
+    } catch (error) {
+      return { deny: `mt5 ${input.action}: ${error instanceof Error ? error.message : String(error)}` }
+    }
   })
 
   on('command.run', { command: 'rocket-pane' }, async $ => {

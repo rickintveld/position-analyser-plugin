@@ -1,6 +1,0 @@
-AB	0	09:00:00.123	Trades	'11111111': market buy 1 XAUUSD sl: 2050.00 tp: 2070.00
-AB	0	09:00:10.123	Trades	'11111111': deal #510 buy 1 XAUUSD at 2060.00 done (based on order #1010)
-AB	0	09:00:20.123	Trades	'11111111': deal #511 sell 1 XAUUSD at 2050.00 done (based on order #1011)
-AB	0	09:00:30.123	Trades	'11111111': stop loss triggered #1010 buy 1 XAUUSD 2060.00 sl: 2050.00 [#1011 sell 1 XAUUSD at 2050.00]
-AB	0	09:00:40.123	Trades	'22222222': market sell 2 US30, close #2001 buy 2 US30 42000.0
-AB	0	09:00:50.123	Trades	'22222222': deal #601 sell 2 US30 at 42100.0 done (based on order #2002)

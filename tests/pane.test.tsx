@@ -109,6 +109,7 @@ const setup = (on: On, served: { status?: object; current?: string }, env: Recor
     if (e.path.endsWith('/assets/mascot.svg')) return { value: MASCOT }
     throw new Error(`ENOENT: ${e.path}`)
   })
+  on('tool.register', async ($, e) => ({ value: { tool: `mcp__rocket__${e.name}` } }) as never)
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
   on('ui.open', async () => ({ value: { isPlaced: true } }) as never)
   return clock
