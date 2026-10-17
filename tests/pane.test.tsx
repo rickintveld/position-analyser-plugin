@@ -106,7 +106,7 @@ const setup = (on: On, served: { status?: object; current?: string }, env: Recor
     if (e.path === `${HOME}/runs/${RUN}/status.json` && served.status !== undefined) return { value: JSON.stringify(served.status) }
     if (e.path === `${HOME}/runs/${RUN}/stats.json`) return { value: JSON.stringify(STATS) }
     if (e.path.endsWith('/assets/mascot.png') && e.as === 'bytes') return { value: { base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' } } as never
-    if (e.path.endsWith('/assets/mascot.svg') || e.path.endsWith('/assets/mascot-pixels.svg')) return { value: MASCOT }
+    if (e.path.endsWith('/assets/mascot.svg')) return { value: MASCOT }
     throw new Error(`ENOENT: ${e.path}`)
   })
   on('command.register', async ($, e) => ({ value: { command: e.name } }))
@@ -126,7 +126,7 @@ const mount = ($: Engine, surface: 'terminal' | 'desktop') =>
 const start = ($: Engine) =>
   $.session.start({ cwd: '/Users/trader', surface: 'terminal', isInteractive: true })
 
-test('while a run works the pane draws its pipeline, mascot top left', async ($, on) => {
+test('while a run works the pane draws its pipeline, logo top left', async ($, on) => {
   const clock = setup(on, { current: RUN, status: RUNNING })
   await start($)
   await clock.advance(1_000)
@@ -141,7 +141,7 @@ test('while a run works the pane draws its pipeline, mascot top left', async ($,
     expect(await ui.find({ text: /two terminals/ })).toBeDefined()
     if (surface === 'terminal') {
       expect(await ui.find({ text: /╭─+╮/ })).toBeDefined()
-      expect(await ui.find({ text: '▀' })).toBeDefined() // the mascot in half blocks
+      expect(await ui.find({ type: 'Image' })).toBeUndefined() // no pictures in this terminal, so no logo
       expect(await ui.find({ text: /WIN RATE/ })).toBeUndefined()
     } else {
       const svgs = await ui.findAll({ type: 'Svg' })
@@ -182,7 +182,6 @@ test('a run that finished with success swaps the pipeline for the charts', async
   expect(await terminal.find({ text: ' XAUUSD ' })).toBeDefined()
   expect(await terminal.find({ text: /−\$1,000\.00$/ })).toBeDefined() // the losing day
   expect(await terminal.find({ text: /11111111 · Demo-Server1/ })).toBeDefined() // a line per account
-  expect(await terminal.find({ text: '▀' })).toBeDefined() // the mascot stays
   await terminal.unmount()
 
   const desktop = await mount($, 'desktop')
@@ -210,7 +209,6 @@ test('a terminal that shows pictures gets the logo itself, not pixels', async ($
   const image = await ui.find({ type: 'Image' })
   expect(image?.props.source).toEqual({ png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' })
   expect(image?.props.columns).toBe(10)
-  expect(await ui.find({ text: '▀' })).toBeUndefined()
   expect(await ui.find({ text: '◆ trading rocket' })).toBeDefined()
   await ui.unmount()
 })

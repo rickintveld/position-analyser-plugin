@@ -67,15 +67,14 @@ engine writes it when it loads the plugin; it is gitignored).
 ## The logo
 
 The top left of the pane, in both views, is the logo: the rocket, white on a black rounded tile.
-The pane is React, but each surface has its own elements, so it is drawn three ways:
+The pane is React, but each surface has its own elements, so it is drawn two ways, or not at all:
 
 - Desktop, editor, mobile (`Svg`): `assets/mascot.svg`, the vector itself, 72×72.
 - A terminal that shows pictures (kitty, Ghostty; detected from `TERM_PROGRAM`, `TERM`,
   `KITTY_WINDOW_ID`): `assets/mascot.png` through the terminal's `Image` element,
   `MASCOT_CELLS` (10×5 cells, about square). The PNG is the SVG rendered at 160×160 with a
   transparent background; re-render it when the SVG changes.
-- Any other terminal (Terminal.app, iTerm2, tmux) only has text cells: `assets/mascot-pixels.svg`,
-  a small hand-drawn 8×9 pixel rocket in half blocks (`mascotText`; plain `<rect>`s with `#rrggbb`
-  fills on a 10px grid, the one rect with `rx` is the tile).
+- Any other terminal (Terminal.app, iTerm2, tmux) only has text cells: no logo there, the header
+  text alone. Never replace the logo with a pixel or text imitation.
 
-Change the three together.
+Change the two together.

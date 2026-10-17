@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/mascot.png" alt="Trading Rocket" width="96" height="96">
+</p>
+
 # Trading Rocket — Claude Code plugins for traders
 
 One plugin, `rocket`, short to type: every tool is a `/rocket:<command>`.
@@ -8,17 +12,33 @@ Analyse your MetaTrader 5 trades straight from the terminal logs on your Mac. No
 no exports, no add-ons inside MetaTrader: the plugin reads the journal MT5 already writes,
 rebuilds every trade and shows you what the data says.
 
-- **Win rate** — wins, losses, break-even
-- **Average RRR** — average win ÷ average loss, plus the planned R:R from your initial SL/TP
-- **Best symbol** — P/L, trades and win rate per symbol
-- **Trade open time** — trades and result per hour of the day
-- **Buy & sell** — how your longs and shorts compare
-- **Average win / average loss**, profit factor, day win %, largest win and loss, hold times
-- **Cumulative P&L** curve and **net P&L per day**
+```
+/rocket:analyse 1234 last 30 days
+```
 
-While Claude works, a live pane shows the pipeline (discover → read → parse → analyse →
-report). When the run is done, the pipeline makes way for a trading-journal dashboard: KPI cards
-with gauges, the equity curve, daily P&L and the breakdowns above.
+### Watch it work
+
+While Claude works, a pane beside the conversation shows the pipeline live: it finds your MT5
+terminals, decodes the logs, rebuilds the trades and computes the numbers, each step with what it
+found.
+
+![The pipeline in the Claude Code app: discover, read, parse, analyse and report, with a note per step](assets/claude-gui-pipeline.png)
+
+### Your trading dashboard
+
+When the run is done, the pipeline makes way for your dashboard, while Claude writes the trade
+table, a line per trade on how it went and what stands out.
+
+![The dashboard in the Claude Code app: KPI cards, the cumulative P&L curve, net daily P&L, performance by symbol, trade time and long vs short, beside Claude's trade report](assets/claude-gui-overview.png)
+
+- **Net P&L**, **trade win %** and **day win %**
+- **Profit factor** and **average win / average loss** (your realised RRR), plus the planned R:R
+  from your initial SL/TP
+- **Cumulative P&L** curve and **net P&L per day**
+- **Performance by symbol**, with your best symbol
+- **Trade time performance**: the result per hour you opened
+- **Long vs short**
+- **Largest win and loss**, and how long you hold winners and losers
 
 ## Install
 
@@ -38,7 +58,7 @@ Requirements: macOS with MetaTrader 5 (the MetaQuotes app, CrossOver or any wine
 ## Use
 
 ```
-/rocket:analyse                       # today
+/rocket:analyse                             # today, all accounts
 /rocket:analyse yesterday
 /rocket:analyse 2026-10-01 2026-10-15
 /rocket:analyse this week
@@ -46,12 +66,29 @@ Requirements: macOS with MetaTrader 5 (the MetaQuotes app, CrossOver or any wine
 /rocket:analyse 1234 5678 this month        # several accounts
 ```
 
+A bare number is an account number; a date has dashes or is written in words.
+
 Claude gives you a trade table per account (open/close time, side, symbol, lots, entry, exit,
 how it was closed: manual / SL / TP / stop out / partial, P/L), a line per trade on how it went
 (SL moved to break-even, TP pulled in, …), failed orders, and the statistics above.
 `/rocket-pane` reopens the pane with the last run.
 
-## How it works
+## For the nerds: the terminal
+
+Prefer Claude Code in a terminal? Same pipeline, same dashboard, drawn in text.
+
+![The pipeline in the terminal: box-drawn job pills per stage, with a note per step](assets/claude-terminal-pipeline.png)
+
+![The dashboard in the terminal: boxed KPI cards, a braille line chart of the cumulative P&L and block bars per day, symbol, hour and side](assets/claude-terminal-overview.png)
+
+- In a narrow terminal the pane waits instead of opening by itself; widen the window or run
+  `/rocket-pane` to open it.
+- The logo shows in terminals that can display pictures (Ghostty, kitty); other terminals show
+  the header text without it.
+- The cumulative P&L is a braille line chart (2×4 dots per character), green above zero and red
+  below.
+
+### How it works
 
 The numbers are computed by a script, not by the model, so they are the same every time:
 
@@ -66,13 +103,13 @@ The numbers are computed by a script, not by the model, so they are the same eve
 **P/L is an estimate** without commission and swap: price move × lots × contract size. Default
 contract sizes are XAU 100 oz, XAG 5000 oz and 100,000 for 6-letter FX pairs; for anything else
 (indices, crypto, CFDs) Claude looks in the expert logs or asks you. Win rate and the per-hour,
-per-symbol and buy/sell counts never need the contract size.
+per-symbol and long/short counts never need the contract size.
 
 **Read-only.** Nothing is installed in or changed in MetaTrader. Everything the plugin writes
-goes to `~/.config/rocket` (override with `ROCKET_HOME`). Terminals in
-other places: `ROCKET_MT5_PATHS=<folder>[:<folder>]`.
+goes to `~/.config/rocket` (override with `ROCKET_HOME`). Terminals in other places:
+`ROCKET_MT5_PATHS=<folder>[:<folder>]`.
 
-## Develop
+### Develop
 
 ```
 zsh tests/cli.zsh            # the script against a fake terminal (tests/fixtures)

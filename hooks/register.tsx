@@ -4,8 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 // run's pipeline (<home>/runs/<current>/status.json, kept by
 // bin/rocket) in a GitLab pipeline-graph style; once the run has
 // finished with success the pipeline makes way for the charts of stats.json.
-// The top left holds the mascot, the rocket (assets/mascot.svg, as pixels
-// in the terminal: assets/mascot-pixels.svg).
+// The top left holds the logo (assets/mascot.svg, assets/mascot.png).
 
 type JobStatus = 'pending' | 'running' | 'success' | 'failed' | 'warning' | 'skipped' | 'canceled'
 type RunStatus = 'running' | 'success' | 'failed' | 'canceled'
@@ -114,7 +113,6 @@ let statsFor = ''
 let frame = 0
 let openedFor = ''
 let mascotSvg: string | undefined
-let mascotLines: Segment[][] = []
 let mascotPng = '' // base64
 let canShowImages = false
 
@@ -830,76 +828,15 @@ function dashboardSvg(g: Group): { source: string; alt: string } {
   return { source, alt }
 }
 
-// --- the mascot --------------------------------------------------------------
-
-const rectsOf = (svg: string) => [...svg.matchAll(/<rect [^>]*>/g)].map(([tag]) => tag)
-
-// The mascot (pixel art on a 10px grid, on a rounded tile) as text: two pixel
-// rows per line with half blocks, the tile cropped to one pixel around the
-// drawing with its corners cut.
-function mascotText(svg: string): Segment[][] {
-  const attr = (tag: string, name: string) => new RegExp(` ${name}="([^"]*)"`).exec(tag)?.[1]
-  const pixel = new Map<string, string>()
-  let bg: string | undefined
-  let [minX, minY, maxX, maxY] = [Infinity, Infinity, -1, -1]
-
-  for (const tag of rectsOf(svg)) {
-    const fill = attr(tag, 'fill')?.toLowerCase()
-    if (fill === undefined || !/^#[0-9a-f]{6}$/.test(fill)) continue
-    if (Number(attr(tag, 'rx') ?? 0) > 0) {
-      bg = fill
-      continue
-    }
-    const [x, y, w, h] = ['x', 'y', 'width', 'height'].map(n => Number(attr(tag, n) ?? 0) / 10) as [number, number, number, number]
-    for (let j = y; j < y + h; j++) {
-      for (let i = x; i < x + w; i++) {
-        if (fill === bg) pixel.delete(`${i},${j}`)
-        else pixel.set(`${i},${j}`, fill)
-      }
-    }
-    if (fill === bg) continue
-    ;[minX, minY, maxX, maxY] = [Math.min(minX, x), Math.min(minY, y), Math.max(maxX, x + w - 1), Math.max(maxY, y + h - 1)]
-  }
-  if (maxX < 0) return []
-
-  const p = bg === undefined ? 0 : 1
-  const [x0, x1, y0] = [minX - p, maxX + p, minY - p]
-  let y1 = maxY + p
-  if ((y1 - y0 + 1) % 2 === 1) y1++
-
-  const colourAt = (i: number, j: number) => {
-    const own = pixel.get(`${i},${j}`)
-    if (own !== undefined || bg === undefined) return own
-    if ((i === x0 || i === x1) && (j === y0 || j === y1)) return undefined
-    if (j > maxY + p) return undefined
-    return bg
-  }
-
-  const lines: Segment[][] = []
-  for (let j = y0; j <= y1; j += 2) {
-    const line: Segment[] = []
-    for (let i = x0; i <= x1; i++) {
-      const top = colourAt(i, j)
-      const bottom = colourAt(i, j + 1)
-      if (top !== undefined) line.push({ text: '▀', color: top, bg: bottom })
-      else if (bottom !== undefined) line.push({ text: '▄', color: bottom })
-      else line.push({ text: ' ' })
-    }
-    lines.push(line)
-  }
-  return lines
-}
+// --- the logo ----------------------------------------------------------------
 
 // The logo: the SVG itself where the surface draws SVG (assets/mascot.svg); in
 // a terminal that shows pictures (kitty, Ghostty) the same logo as a PNG
-// (assets/mascot.png); elsewhere a small pixel rocket in half blocks
-// (assets/mascot-pixels.svg), since such a terminal only has text cells.
+// (assets/mascot.png). A terminal with only text cells shows no logo.
 async function loadMascot($: EngineInterface) {
   if (mascotSvg !== undefined) return
   mascotSvg = await $.fs.read(`${$.plugin.root}/assets/mascot.svg`).catch(() => '')
   mascotPng = await $.fs.read(`${$.plugin.root}/assets/mascot.png`, { as: 'bytes' }).then(b => b.base64).catch(() => '')
-  const pixels = await $.fs.read(`${$.plugin.root}/assets/mascot-pixels.svg`).catch(() => '')
-  mascotLines = pixels === '' ? [] : mascotText(pixels)
   const program = await $.env.get('TERM_PROGRAM')
   const term = await $.env.get('TERM')
   const kitty = await $.env.get('KITTY_WINDOW_ID')
@@ -1023,16 +960,7 @@ export const register: Register = on => {
           </Box>
         )
       }
-      if (mascotLines.length === 0) return <Box flexDirection="column">{beside.map(line)}</Box>
-      const height = Math.max(mascotLines.length, beside.length)
-      const top = Math.floor((height - beside.length) / 2)
-      const width = mascotLines[0]?.length ?? 0
-      const rows = Array.from({ length: height }, (_, i) => [
-        ...(mascotLines[i] ?? [{ text: ' '.repeat(width) }]),
-        { text: '   ' },
-        ...(beside[i - top] ?? []),
-      ])
-      return <Box flexDirection="column">{rows.map(line)}</Box>
+      return <Box flexDirection="column">{beside.map(line)}</Box>
     }
 
     const brand: Segment = { text: '◆ trading rocket', color: ACCENT, bold: true }
