@@ -42,15 +42,21 @@ table, a line per trade on how it went and what stands out.
 
 ## Install
 
-```
-/plugin install rocket --marketplace rickintveld/position-analyser-plugin
-```
-
-Or add the marketplace first and pick the plugin from `/plugin`:
+In Claude Code, add the marketplace and install the plugin from it:
 
 ```
 /plugin marketplace add rickintveld/position-analyser-plugin
+/plugin install rocket@trading-rocket
 ```
+
+Or from a shell:
+
+```
+claude plugin marketplace add rickintveld/position-analyser-plugin
+claude plugin install rocket@trading-rocket
+```
+
+Update later with `/plugin marketplace update trading-rocket`.
 
 Requirements: macOS with MetaTrader 5 (the MetaQuotes app, CrossOver or any wine prefix),
 `zsh`, `jq` (built into macOS 15 and later; otherwise `brew install jq`), `awk` and `iconv`.
