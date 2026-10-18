@@ -25,10 +25,12 @@ commit real logs or account numbers: fixtures are anonymised (`11111111`, `Examp
   terminals, decodes the logs (UTF-16LE by hand: the plugin environment's `TextDecoder` knows UTF-8 only) and keeps the run
   state; `types.ts` holds the shapes of the JSON files. The engine never touches `$`: the hooks
   module may not hand `$` to another file, so it passes an `Io` (files) and an `Env` (the
-  environment variables it reads, by name) instead.
+  environment variables it reads, by name) instead. The pipeline is the data only: `review`
+  ends the run with success, so the charts are in view while the model writes the report and
+  asks the reflection questions in the chat.
 - `hooks/register.tsx` is the hooks module: it registers the tool `mt5` (`mcp__rocket__mt5`, one
   `action` per call) and serves it from the engine, and draws the live pane: the pipeline while a
-  run is `running`, the charts of `stats.json` once it finished with `success`.
+  run is `running`, the charts of `stats.json` once it finished with `success` (after `review`).
 - A new log line shape or a new review tag needs a line in `tests/fixtures/journals.ts` and a
   check in `tests/engine.test.ts`.
 
@@ -48,8 +50,7 @@ gitignored).
 - `runs/<id>/status.json` — `{id, range: {from, to}, status (running|success|failed|canceled),
   active_stage, summary, notes[≤20], started_at, finished_at, stages[{name, jobs[]}], jobs{id:
   {status, note, started_at, finished_at}}}`. Stages: discover [terminals] → read [journal,
-  experts] → parse [events, trades, failed] → analyse [pnl, stats, review] → report [table,
-  story, reflect].
+  experts] → parse [events, trades, failed] → analyse [pnl, stats, review].
 - `runs/<id>/terminals.json`, `logs/<terminal>/{journal,experts}/YYYYMMDD.log` (decoded UTF-8),
   `trades.json`, `stats.json`, `review.json`. Paths use `/` on every platform.
 

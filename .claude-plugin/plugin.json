@@ -1,6 +1,6 @@
 {
   "name": "rocket",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Trading Rocket for Claude Code. /rocket:analyse reads your MetaTrader 5 trades from the terminal logs: win rate, RRR, best symbol, open hours, long vs short, average win and loss, with a live pipeline pane that turns into a dashboard.",
   "author": {
     "name": "Trading Rocket"

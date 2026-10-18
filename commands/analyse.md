@@ -8,8 +8,9 @@ allowed-tools: mcp__rocket__mt5, Read, AskUserQuestion
 
 Help the trader learn from their own trades in the MetaTrader 5 logs on this machine (Windows, or
 wine on macOS and Linux): what went well, what cost money, and what to work on next. The
-statistics are in the pane: it shows the pipeline while you work and turns into the charts when
-the run finishes with success. The report is about the trader's actions, not the numbers again.
+statistics are in the pane: it shows the pipeline while the data is gathered and turns into the
+charts as soon as `review` is done, so the trader has them in view while you write the report and
+ask the reflection questions. The report is about the trader's actions, not the numbers again.
 
 **Read-only.** Install nothing, change nothing in MetaTrader 5, never write into its folders.
 Everything goes through the `mcp__rocket__mt5` tool, which keeps its state under the user's
@@ -72,6 +73,8 @@ yourself. Stop at the first step that fails: `{action: "finish", status: "failed
    `off_plan` (n, wins, losses, `sum_r`, `avg_r`, `net`), `tags` (per code: how often, which
    trades, `sum_r`, `net`), `failed` by reason, `max_loss_streak` and `busiest_day`. `reflect`
    lists the trades to ask about; `journal` on a trade holds the trader's earlier answers.
+   `review` ends the run with success: the pane now shows the charts. Do not call `finish`
+   after it.
 
    The tags: good `plan_followed` (SL and TP at open, never loosened, closed by SL/TP),
    `protected` (SL to break-even or better), `scaled_out` (part taken off in profit); leak
@@ -94,12 +97,9 @@ intentions: those come from the trader, in the reflection. Good trades get the s
 "SL and TP set, left alone, TP hit at +2R. That is the trade to repeat." The logs do not show the
 price after a close, so never say what would have happened ("TP would have been hit").
 
-`{action: "job", job: "table", status: "running", note: "writing the trade table"}`, then
 `{action: "table"}` (markdown). Per account (heading: account number + broker/server):
 
 - The table from `table`, unchanged.
-
-`job` table `success` with "<n> trades", then `job` story `running` with "trade by trade".
 
 ### Per trade
 
@@ -136,12 +136,9 @@ End the analysis with **one** focus for the next period: the leak that cost the 
 into a rule the trader can check next time with `/rocket:analyse` ("no new trade within 15 minutes
 of a loss", "the SL only moves towards the profit"). Measurable, not "more discipline".
 
-`job` story `success`.
-
 ## 4. Reflection
 
-Always, unless `reflect` is empty: `job` reflect `running` with "questions to the trader". Per
-trade in `reflect` (at most three), ask with AskUserQuestion, in the user's language, naming the
+Always, unless `reflect` is empty. Per trade in `reflect` (at most three), ask with AskUserQuestion, in the user's language, naming the
 trade (#no, side, symbol, the fact that put it in the list: `costliest_leak`, `best_on_plan` or
 `after_loss`). One call, up to four questions, each with 2-4 short options (the user can always
 type their own):
@@ -159,10 +156,7 @@ lesson}}` (only what was answered). Then reflect it back in two or three sentenc
 answers to the facts ("you say you wanted the loss back; the log shows you were in again after 2
 minutes with twice the lots"). If the user skips the questions, accept that without comment.
 
-`job` reflect `success` with "<n> answered" (or `skipped` when there was nothing to ask or the
-user declined), then `{action: "finish", status: "success", summary: "<one line: trades, on
-plan, the focus>"}`. The pane now shows the charts. Tell the user they can reopen it with
-`/rocket-pane`.
+End by telling the user they can reopen the charts with `/rocket-pane`.
 
-If the user stops you halfway, finish with `canceled` and the reason. Never leave a run on
-`running`.
+If the user stops you before `review`, finish with `canceled` and the reason. Never leave a run
+on `running`.

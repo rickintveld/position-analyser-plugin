@@ -85,7 +85,7 @@ test('macOS: a wine terminal, every kind of trade, the numbers', async ($, on) =
 
   const run = await mt5($, { action: 'start', from: '2026-01-05', to: '20260106' })
   expect(run.range).toEqual({ from: '2026-01-05', to: '2026-01-06' })
-  expect(json(files, H, 'status.json').stages.map((s: { name: string }) => s.name)).toEqual(['discover', 'read', 'parse', 'analyse', 'report'])
+  expect(json(files, H, 'status.json').stages.map((s: { name: string }) => s.name)).toEqual(['discover', 'read', 'parse', 'analyse'])
 
   const terminals = await mt5($, { action: 'discover' })
   expect(terminals[0].label).toBe('net.metaquotes.wine.metatrader5')
@@ -124,16 +124,12 @@ test('macOS: a wine terminal, every kind of trade, the numbers', async ($, on) =
   expect(tags('1001')).toEqual(['plan_followed', 'protected'])
   expect(tags('1003')).toEqual(['scaled_out'])
   expect(tags('2001')).toEqual(['no_sl'])
-  expect(json(files, H, 'status.json').jobs.review.status).toBe('success')
+  const done = json(files, H, 'status.json')
+  expect([done.status, done.summary, done.jobs.review.status]).toEqual(['success', '5 trade(s) · 4/5 on plan · 1 leak(s)', 'success']) // the charts while the report is written
 
   const table = await mt5($, { action: 'table' })
   expect(table.split('\n').filter((l: string) => /^\| \d/.test(l)).length).toBe(5)
   expect(table).toContain('| unknown | buy | XAUUSD | 1 | 1995 | 2005 |')
-
-  await mt5($, { action: 'job', job: 'table', status: 'running', note: 'writing' })
-  await mt5($, { action: 'finish', status: 'success', summary: '5 trades' })
-  const done = json(files, H, 'status.json')
-  expect([done.status, done.jobs.story.status, done.jobs.table.status]).toEqual(['success', 'skipped', 'canceled'])
 })
 
 test('Windows: the AppData terminal of a broker install, one account', async ($, on) => {
@@ -181,7 +177,9 @@ test('an unknown account, a bad date, no terminal', async ($, on) => {
 
   await mt5($, { action: 'start' })
   await expect(mt5($, { action: 'discover', paths: ['/nowhere'] })).rejects.toThrow('no terminal found')
-  await expect(mt5($, { action: 'job', job: 'nope', status: 'success' })).rejects.toThrow('unknown job')
+  await expect(mt5($, { action: 'job', job: 'table', status: 'success' })).rejects.toThrow('unknown action')
+  await mt5($, { action: 'finish', status: 'canceled', summary: 'no terminal' })
+  expect(json(files, '/home/trader/.config/rocket', 'status.json').jobs.review.status).toBe('skipped')
 })
 
 test('review: what went well and what leaked, trade by trade; the journal', async ($, on) => {

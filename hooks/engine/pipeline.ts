@@ -40,7 +40,6 @@ const STAGES = [
   { name: 'read', jobs: ['journal', 'experts'] },
   { name: 'parse', jobs: ['events', 'trades', 'failed'] },
   { name: 'analyse', jobs: ['pnl', 'stats', 'review'] },
-  { name: 'report', jobs: ['table', 'story', 'reflect'] },
 ]
 
 export type Terminal = { index: number; path: string; label: string }
@@ -392,7 +391,11 @@ export async function review(io: Io) {
   await io.write(`${dir}/review.json`, JSON.stringify(result, null, 2))
   const g = result.groups[0]
   const leaks = g?.tags.filter(t => t.kind === 'leak').reduce((s, t) => s + t.n, 0) ?? 0
-  await job(io, 'review', 'success', g === undefined || g.closed === 0 ? 'no closed trades' : `${g.clean}/${g.closed} on plan · ${leaks} leak(s)`)
+  const note = g === undefined || g.closed === 0 ? 'no closed trades' : `${g.clean}/${g.closed} on plan · ${leaks} leak(s)`
+  await job(io, 'review', 'success', note)
+  // The data is complete: the run ends here and the pane shows the charts while
+  // the report and the reflection go on in the chat.
+  await finish(io, 'success', `${trades.trades.length} trade(s) · ${note}`)
   return result
 }
 
