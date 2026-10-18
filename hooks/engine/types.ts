@@ -45,6 +45,10 @@ export type EventBase = { terminal: number; account: string; at: string; seq: nu
 
 export type Exit = { at: string; price: number | null; volume: number | null; reason: string; deal: string }
 
+// The SL/TP of a position over time: what the open request asked for (when it
+// was logged), then every confirmed modify.
+export type Level = { at: string; kind: 'open' | 'modify'; sl: number | null; tp: number | null }
+
 export type Trade = {
   n: number
   account: string
@@ -61,6 +65,7 @@ export type Trade = {
   tp: number | null
   sl_changes: number
   tp_changes: number
+  levels: Level[]
   exits: Exit[]
   status: 'closed' | 'open'
   close_at: string | null
@@ -125,3 +130,58 @@ export type Group = {
 }
 
 export type Stats = { range: { from: string; to: string }; groups: Group[] }
+
+// What the trader did, trade by trade and per period, from review.ts.
+export type TagKind = 'good' | 'leak' | 'note'
+
+export type Tag = { code: string; kind: TagKind; fact: string }
+
+export type Answers = Record<string, string>
+
+export type TradeReview = {
+  n: number
+  no: number
+  account: string
+  position: string
+  symbol: string
+  side: Side
+  open_at: string | null
+  close_at: string | null
+  status: 'closed' | 'open'
+  r: number | null
+  planned_rr: number | null
+  pnl: number | null
+  currency: string | null
+  clean: boolean
+  tags: Tag[]
+  journal: Answers | null
+}
+
+export type Split = { n: number; wins: number; losses: number; sum_r: number | null; avg_r: number | null; net: number | null }
+
+export type ReviewGroup = {
+  id: string
+  label: string
+  closed: number
+  clean: number
+  plan_score: number | null
+  currency: string | null
+  on_plan: Split
+  off_plan: Split
+  tags: { code: string; kind: TagKind; n: number; trades: string[]; sum_r: number | null; net: number | null }[]
+  failed: { reason: string; n: number }[]
+  max_loss_streak: number
+  busiest_day: { date: string; n: number } | null
+}
+
+export type Reflect = { n: number; no: number; account: string; position: string; why: 'costliest_leak' | 'best_on_plan' | 'after_loss' }
+
+export type Review = {
+  range: { from: string; to: string }
+  limits: { revenge_min: number; early_share: number; over_plan_r: number; streak: number }
+  trades: TradeReview[]
+  groups: ReviewGroup[]
+  reflect: Reflect[]
+}
+
+export type JournalEntry = { account: string; position: string; symbol: string; open_at: string | null; run: string; saved_at: number; answers: Answers }

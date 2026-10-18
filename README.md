@@ -74,9 +74,21 @@ wine prefix), and on Linux with wine. Nothing else to install: everything runs i
 
 A bare number is an account number; a date has dashes or is written in words.
 
-Claude gives you a trade table per account (open/close time, side, symbol, lots, entry, exit,
-how it was closed: manual / SL / TP / stop out / partial, P/L), a line per trade on how it went
-(SL moved to break-even, TP pulled in, …), failed orders, and the statistics above.
+The numbers are in the pane. In the chat Claude goes through what you did, so you can learn from
+it, good and bad, in plain facts:
+
+- **Per trade**: the trade table per account (open/close time, side, symbol, lots, entry, exit,
+  how it was closed, P/L), then every trade that has something to learn from: what happened
+  (plan followed, SL moved to break-even, SL moved away from the entry, no SL, closed early by
+  hand, back in right after a loss, more lots after a loss, …), what it cost or made in R, and
+  what to do next time.
+- **Patterns this period**: trades on plan against trades where you deviated, what works, what
+  leaks and what each leak cost in R, and failed orders.
+- **One focus** for the next period: a rule you can check with the next `/rocket:analyse`.
+- **Reflection**: a few questions about the trades that matter most (your setup, whether you
+  followed your plan, what drove the decision, your lesson). Your answers are kept in
+  `.config/rocket/journal.json` and come back the next time that trade is reviewed.
+
 `/rocket-pane` reopens the pane with the last run.
 
 ## For the nerds: the terminal
@@ -108,6 +120,8 @@ model, so they are the same every time. Claude drives it through the tool `mcp__
 3. `parse` rebuilds positions from the `Trades` lines: opening deals, `close #N` requests,
    SL/TP/stop out triggers, partial closes, SL/TP modifications and failed orders, per account.
 4. `analyse` computes P/L and the statistics.
+5. `review` tags every trade with what the trader did (good, leak or note, each with the fact
+   behind it) and the patterns per period; `reflect` keeps the trader's answers in the journal.
 
 **P/L is an estimate** without commission and swap: price move × lots × contract size. Default
 contract sizes are XAU 100 oz, XAG 5000 oz and 100,000 for 6-letter FX pairs; for anything else

@@ -65,7 +65,7 @@ class Terminal {
     const t: Open = this.open.get(key) ?? {
       account: c.account, position: c.position, terminal: c.terminal, symbol: c.symbol, side: c.position_side,
       volume: null, remaining: null, open_at: null, entry: c.entry, requested: true,
-      sl_initial: null, tp_initial: null, sl: null, tp: null, sl_changes: 0, tp_changes: 0, exits: [],
+      sl_initial: null, tp_initial: null, sl: null, tp: null, sl_changes: 0, tp_changes: 0, levels: [], exits: [],
     }
     const exits: Exit[] = [...t.exits, { at: d.at, price: d.price, volume: d.volume, reason: c.reason, deal: d.deal }]
     const left = t.remaining === null ? 0 : (round5(t.remaining - (d.volume ?? 0)) ?? 0)
@@ -119,6 +119,7 @@ class Terminal {
         t.tp_initial ??= e.tp
         t.sl = e.sl
         t.tp = e.tp
+        t.levels = [...t.levels, { at: e.at, kind: 'modify', sl: e.sl, tp: e.tp }]
         return
       }
       case 'deal': {
@@ -135,6 +136,7 @@ class Terminal {
           volume: e.volume, remaining: e.volume, open_at: e.at, entry: e.price, requested: req !== undefined,
           sl_initial: req?.sl ?? null, tp_initial: req?.tp ?? null, sl: req?.sl ?? null, tp: req?.tp ?? null,
           sl_changes: 0, tp_changes: 0, exits: [],
+          levels: req === undefined ? [] : [{ at: e.at, kind: 'open', sl: req.sl, tp: req.tp }],
         })
       }
     }

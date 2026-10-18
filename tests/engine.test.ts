@@ -119,6 +119,13 @@ test('macOS: a wine terminal, every kind of trade, the numbers', async ($, on) =
   expect(g('all')).toMatchObject({ net: null, money: { ok: false } }) // US30 has no contract size
   expect(g('22222222').win_rate).toBe(100)
 
+  const review = await mt5($, { action: 'review' })
+  const tags = (position: string) => review.trades.find((t: { position: string }) => t.position === position).tags.map((x: { code: string }) => x.code)
+  expect(tags('1001')).toEqual(['plan_followed', 'protected'])
+  expect(tags('1003')).toEqual(['scaled_out'])
+  expect(tags('2001')).toEqual(['no_sl'])
+  expect(json(files, H, 'status.json').jobs.review.status).toBe('success')
+
   const table = await mt5($, { action: 'table' })
   expect(table.split('\n').filter((l: string) => /^\| \d/.test(l)).length).toBe(5)
   expect(table).toContain('| unknown | buy | XAUUSD | 1 | 1995 | 2005 |')
@@ -175,4 +182,52 @@ test('an unknown account, a bad date, no terminal', async ($, on) => {
   await mt5($, { action: 'start' })
   await expect(mt5($, { action: 'discover', paths: ['/nowhere'] })).rejects.toThrow('no terminal found')
   await expect(mt5($, { action: 'job', job: 'nope', status: 'success' })).rejects.toThrow('unknown job')
+})
+
+test('review: what went well and what leaked, trade by trade; the journal', async ($, on) => {
+  const files: Files = new Map()
+  const home = '/home/trader'
+  terminal(files, `${home}/.wine/drive_c/Program Files/MetaTrader 5`)
+  fileSystem(on, files, { HOME: home })
+  await start($)
+  const H = `${home}/.config/rocket`
+
+  await mt5($, { action: 'start', date: '2026-01-12' })
+  await mt5($, { action: 'discover' })
+  await mt5($, { action: 'read' })
+  await mt5($, { action: 'parse' })
+  await mt5($, { action: 'analyse' })
+  const review = await mt5($, { action: 'review' })
+  const t = (no: number) => review.trades.find((x: { no: number }) => x.no === no)
+  const codes = (no: number) => t(no).tags.map((x: { code: string }) => x.code)
+  const facts = (no: number) => t(no).tags.map((x: { fact: string }) => x.fact)
+
+  expect(codes(1)).toEqual(['sl_widened', 'over_plan'])
+  expect(facts(1)).toEqual(['SL moved away from the entry 1×: 2000 → 1995', 'lost 1.5R where 1R was planned'])
+  expect(codes(2)).toEqual(['no_sl', 'revenge', 'size_up'])
+  expect(facts(2)).toEqual([
+    'opened without a stop loss; SL set 8 min later',
+    'opened 2 min after the loss of #1, same symbol',
+    '1 → 2 lots after the loss of #1',
+  ])
+  expect(codes(3)).toEqual(['closed_early', 'revenge', 'streak', 'tp_pulled'])
+  expect(facts(3)[0]).toBe('closed by hand at +0.4R of a planned 2R')
+  expect(facts(3)[2]).toBe('opened after 2 losses in a row that day')
+  expect(codes(4)).toEqual(['plan_followed'])
+  expect(t(4)).toMatchObject({ clean: true, r: 1, journal: null })
+
+  const [g] = review.groups
+  expect(g).toMatchObject({ closed: 4, clean: 1, plan_score: 25, currency: 'USD', max_loss_streak: 2, busiest_day: { date: '2026-01-12', n: 4 } })
+  expect(g.on_plan).toEqual({ n: 1, wins: 1, losses: 0, sum_r: 1, avg_r: 1, net: 500 })
+  expect(g.off_plan).toEqual({ n: 3, wins: 1, losses: 2, sum_r: -2.1, avg_r: -0.7, net: -2300 })
+  expect(g.tags[0]).toMatchObject({ code: 'revenge', kind: 'leak', n: 2, trades: ['11111111 #2', '11111111 #3'], sum_r: -0.6, net: -800 })
+  expect(review.reflect.map((r: { no: number; why: string }) => [r.no, r.why])).toEqual([[1, 'costliest_leak'], [4, 'best_on_plan'], [2, 'after_loss']])
+  expect(json(files, H, 'status.json').jobs.review.note).toBe('1/4 on plan · 8 leak(s)')
+
+  await expect(mt5($, { action: 'reflect', account: '11111111', position: '1', answers: { setup: 'x' } })).rejects.toThrow('no trade 1')
+  await expect(mt5($, { action: 'reflect', account: '11111111', position: '1100', answers: { setup: ' ' } })).rejects.toThrow('answers is empty')
+  await mt5($, { action: 'reflect', account: '11111111', position: '1100', answers: { setup: 'breakout', feeling: 'hope', lesson: ' leave the SL ' } })
+  const journal = JSON.parse(fromUtf8(files.get(`${H}/journal.json`) ?? ''))
+  expect(journal.entries).toMatchObject([{ account: '11111111', position: '1100', symbol: 'XAUUSD', answers: { setup: 'breakout', feeling: 'hope', lesson: 'leave the SL' } }])
+  expect((await mt5($, { action: 'review' })).trades[0].journal).toEqual({ setup: 'breakout', feeling: 'hope', lesson: 'leave the SL' })
 })

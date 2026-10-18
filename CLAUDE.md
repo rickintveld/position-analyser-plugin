@@ -7,27 +7,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Trading Rocket's public Claude Code plugin `rocket` (marketplace `trading-rocket`, `.claude-plugin/`).
 The plugin name is short on purpose: every tool is a command `/rocket:<name>` (`commands/<name>.md`);
 add new tools as commands here rather than as new plugins. The first, `/rocket:analyse`, analyses MetaTrader 5
-trades from the terminal logs: a trade table per account, then win rate, average RRR, best symbol,
-trade open hour, buy vs sell, average win and average loss. Read-only towards MetaTrader. Never
+trades from the terminal logs: the statistics as charts in the pane, and in the chat a trade
+table per account, then per trade and per period what the trader did well, what leaked and one
+focus, and reflection questions. Read-only towards MetaTrader. Never
 commit real logs or account numbers: fixtures are anonymised (`11111111`, `Example Broker Ltd`).
 
 - Runs on Windows, macOS and Linux with nothing to install: all logic is TypeScript inside the
   plugin. Never add a step that needs a shell, `jq`, `awk` or another tool the user may lack.
 - `commands/analyse.md` is `/rocket:analyse [accounts] [period]`: the model-driven workflow. It
-  calls the tool `mcp__rocket__mt5` step by step and writes the report (table, a line per trade,
-  failures, statistics) from the tool's answers. The model never computes numbers itself.
+  calls the tool `mcp__rocket__mt5` step by step and writes the report (table, the review per
+  trade and per period, one focus, reflection questions) from the tool's answers. The model never
+  computes numbers itself, and the report never repeats the statistics: the pane shows them.
 - `hooks/engine/` is the deterministic part, pure TypeScript: `events.ts` turns journal lines into
   events (the log line shapes it knows are at its top), `trades.ts` rebuilds trades from them,
-  `stats.ts` computes the statistics, `pipeline.ts` finds the terminals, decodes the logs
-  (UTF-16LE by hand: the plugin environment's `TextDecoder` knows UTF-8 only) and keeps the run
+  `stats.ts` computes the statistics, `review.ts` the tags per trade (good / leak / note, each
+  with its fact; the list is at its top) and the patterns per period, `pipeline.ts` finds the
+  terminals, decodes the logs (UTF-16LE by hand: the plugin environment's `TextDecoder` knows UTF-8 only) and keeps the run
   state; `types.ts` holds the shapes of the JSON files. The engine never touches `$`: the hooks
   module may not hand `$` to another file, so it passes an `Io` (files) and an `Env` (the
   environment variables it reads, by name) instead.
 - `hooks/register.tsx` is the hooks module: it registers the tool `mt5` (`mcp__rocket__mt5`, one
   `action` per call) and serves it from the engine, and draws the live pane: the pipeline while a
   run is `running`, the charts of `stats.json` once it finished with `success`.
-- A new log line shape needs a line in `tests/fixtures/journals.ts` and a check in
-  `tests/engine.test.ts`.
+- A new log line shape or a new review tag needs a line in `tests/fixtures/journals.ts` and a
+  check in `tests/engine.test.ts`.
 
 Checks: `claude plugin test .` (engine end to end on an in-memory file system laid out as
 macOS/wine, Windows and Linux; the pane); `claude plugin validate .`; type-check with `tsc -p .`
@@ -40,12 +43,15 @@ gitignored).
 `USERPROFILE`):
 
 - `current` — the id of the run the pane shows.
+- `journal.json` — `{entries: [{account, position, symbol, open_at, run, saved_at, answers}]}`:
+  the trader's reflection answers, one entry per position, over every run.
 - `runs/<id>/status.json` — `{id, range: {from, to}, status (running|success|failed|canceled),
   active_stage, summary, notes[≤20], started_at, finished_at, stages[{name, jobs[]}], jobs{id:
   {status, note, started_at, finished_at}}}`. Stages: discover [terminals] → read [journal,
-  experts] → parse [events, trades, failed] → analyse [pnl, stats] → report [table, story].
+  experts] → parse [events, trades, failed] → analyse [pnl, stats, review] → report [table,
+  story, reflect].
 - `runs/<id>/terminals.json`, `logs/<terminal>/{journal,experts}/YYYYMMDD.log` (decoded UTF-8),
-  `trades.json`, `stats.json`. Paths use `/` on every platform.
+  `trades.json`, `stats.json`, `review.json`. Paths use `/` on every platform.
 
 ## Conventions
 
@@ -61,6 +67,8 @@ gitignored).
   otherwise it opens position `#<order>`. A close whose position opened before the logs read
   becomes a trade with open time `null` and the entry from the close request. A trigger logged
   after its deal takes back an unrequested opening of the same minute.
+- Review: tags state only what the logs show, never what the price did after a close. R is
+  from the initial SL; a trade without one has no R. The report's tone is direct and factual.
 - Statistics: win/loss from the price move (always known); money figures only when every closed
   trade of a group has a P/L in one currency, else `null` with `money.why`. Different currencies
   are never added up.

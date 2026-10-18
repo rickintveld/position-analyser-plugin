@@ -1,12 +1,13 @@
 import { parseJournal } from './events'
+import { computeReview } from './review'
 import { computeStats } from './stats'
 import { buildTrades } from './trades'
-import type { Event, JobStatus, Run, Trades } from './types'
+import type { Answers, Event, JournalEntry, JobStatus, Run, Trades } from './types'
 
 // The deterministic part of /rocket:analyse, served as the tool
 // mcp__rocket__mt5: finds the MetaTrader 5 terminals on this machine (Windows,
 // or wine on macOS and Linux), decodes their logs, rebuilds the trades and
-// computes the statistics, and keeps one pipeline per run that the pane draws.
+// computes the statistics and the review, and keeps one pipeline per run that the pane draws.
 // Read-only towards MetaTrader: it only reads logs and writes under the home
 // folder (ROCKET_HOME, default <user home>/.config/rocket).
 
@@ -38,8 +39,8 @@ const STAGES = [
   { name: 'discover', jobs: ['terminals'] },
   { name: 'read', jobs: ['journal', 'experts'] },
   { name: 'parse', jobs: ['events', 'trades', 'failed'] },
-  { name: 'analyse', jobs: ['pnl', 'stats'] },
-  { name: 'report', jobs: ['table', 'story'] },
+  { name: 'analyse', jobs: ['pnl', 'stats', 'review'] },
+  { name: 'report', jobs: ['table', 'story', 'reflect'] },
 ]
 
 export type Terminal = { index: number; path: string; label: string }
@@ -372,6 +373,41 @@ export async function analyse(io: Io) {
     g === undefined ? 'no trades' : `${g.closed} closed · win rate ${g.win_rate ?? '–'}%${g.net !== null ? ` · net ${g.net} ${g.currency}` : ''}`,
   )
   return stats
+}
+
+// The trader's answers to the reflection questions, over every run:
+// <home>/journal.json, one entry per position.
+async function readJournal(io: Io): Promise<JournalEntry[]> {
+  const text = await io.read(`${homeDir(io.env)}/journal.json`).catch(() => '')
+  return text === '' ? [] : (JSON.parse(text) as { entries: JournalEntry[] }).entries
+}
+
+// What the trader did, trade by trade and per period (review.ts).
+export async function review(io: Io) {
+  const { dir } = await current(io)
+  const trades = await readTrades(io)
+  await job(io, 'review', 'running', 'what went well, what leaked')
+  const journal = Object.fromEntries((await readJournal(io)).map(e => [`${e.account}/${e.position}`, e.answers]))
+  const result = computeReview(trades, journal)
+  await io.write(`${dir}/review.json`, JSON.stringify(result, null, 2))
+  const g = result.groups[0]
+  const leaks = g?.tags.filter(t => t.kind === 'leak').reduce((s, t) => s + t.n, 0) ?? 0
+  await job(io, 'review', 'success', g === undefined || g.closed === 0 ? 'no closed trades' : `${g.clean}/${g.closed} on plan · ${leaks} leak(s)`)
+  return result
+}
+
+// Keeps the trader's answers about one trade of this run in the journal.
+export async function reflect(io: Io, input: { account?: string; position?: string; answers?: Answers }) {
+  const { run } = await current(io)
+  const trades = await readTrades(io)
+  const t = trades.trades.find(x => x.account === String(input.account ?? '') && x.position === String(input.position ?? ''))
+  if (t === undefined) throw new Error(`no trade ${input.position ?? '?'} on account ${input.account ?? '?'} in this run`)
+  const answers = Object.fromEntries(Object.entries(input.answers ?? {}).map(([k, v]) => [k, String(v).trim()]).filter(([, v]) => v !== ''))
+  if (Object.keys(answers).length === 0) throw new Error('answers is empty')
+  const entries = (await readJournal(io)).filter(e => !(e.account === t.account && e.position === t.position))
+  const entry: JournalEntry = { account: t.account, position: t.position, symbol: t.symbol, open_at: t.open_at, run: run.id, saved_at: now(), answers }
+  await io.write(`${homeDir(io.env)}/journal.json`, JSON.stringify({ entries: [...entries, entry] }, null, 2))
+  return { saved: entry, entries: entries.length + 1 }
 }
 
 // Markdown tables per account, for the report.

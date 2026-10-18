@@ -22,26 +22,33 @@ type ToolInput = {
   status?: string
   note?: string
   summary?: string
+  account?: string
+  position?: string
+  answers?: Record<string, string>
 }
 
 const TOOL_DESCRIPTION =
   'The engine of /rocket:analyse: MetaTrader 5 trades from the terminal logs on this machine (Windows, or wine on macOS/Linux), read-only. ' +
   'Run the actions in order: start (from, to or date as YYYY-MM-DD, accounts), discover (paths: extra folders to search instead), read, ' +
-  'parse (contracts: {SYMBOL: size per lot}), analyse; then table (markdown per account) and trades (trades.json). ' +
-  'job (job, status, note) reports the report jobs table/story; note (note) adds a milestone; finish (status: success|failed|canceled, summary). ' +
+  'parse (contracts: {SYMBOL: size per lot}), analyse, review (tags per trade and patterns per period, review.json); ' +
+  'then table (markdown per account) and trades (trades.json). reflect (account, position, answers) keeps the trader\'s answers about a trade in the journal. ' +
+  'job (job, status, note) reports the report jobs table/story/reflect; note (note) adds a milestone; finish (status: success|failed|canceled, summary). ' +
   'status returns the run. Each step reports its own jobs to the pane.'
 
 const TOOL_SCHEMA = {
   type: 'object',
   properties: {
-    action: { type: 'string', enum: ['start', 'discover', 'read', 'parse', 'analyse', 'table', 'trades', 'job', 'note', 'finish', 'status'] },
+    action: { type: 'string', enum: ['start', 'discover', 'read', 'parse', 'analyse', 'review', 'table', 'trades', 'reflect', 'job', 'note', 'finish', 'status'] },
     from: { type: 'string', description: 'start: first day, YYYY-MM-DD' },
     to: { type: 'string', description: 'start: last day, YYYY-MM-DD' },
     date: { type: 'string', description: 'start: one day, YYYY-MM-DD' },
     accounts: { type: 'array', items: { type: 'string' }, description: 'start: only these MT5 account numbers' },
     paths: { type: 'array', items: { type: 'string' }, description: 'discover: folders to search instead of the usual places' },
     contracts: { type: 'object', additionalProperties: { type: 'number' }, description: 'parse: contract size per lot by symbol' },
-    job: { type: 'string', description: 'job: the job id (table, story)' },
+    account: { type: 'string', description: 'reflect: the account number of the trade' },
+    position: { type: 'string', description: 'reflect: the position id of the trade' },
+    answers: { type: 'object', additionalProperties: { type: 'string' }, description: 'reflect: the trader\'s answers by question (setup, plan, feeling, lesson)' },
+    job: { type: 'string', description: 'job: the job id (table, story, reflect)' },
     status: { type: 'string', description: 'job: pending|running|success|failed|warning|skipped|canceled; finish: success|failed|canceled' },
     note: { type: 'string', description: 'job, note: a short note for the pane' },
     summary: { type: 'string', description: 'finish: one line for the pane' },
@@ -936,6 +943,8 @@ export const register: Register = on => {
           case 'read': return engine.read(io)
           case 'parse': return engine.parse(io, input.contracts ?? {})
           case 'analyse': return engine.analyse(io)
+          case 'review': return engine.review(io)
+          case 'reflect': return engine.reflect(io, input)
           case 'table': return engine.table(io)
           case 'trades': return engine.readTrades(io)
           case 'job': return engine.job(io, input.job ?? '', input.status ?? '', input.note ?? '').then(() => ({ ok: true }))

@@ -29,8 +29,8 @@ const RUNNING = {
     { name: 'discover', jobs: ['terminals'] },
     { name: 'read', jobs: ['journal', 'experts'] },
     { name: 'parse', jobs: ['events', 'trades', 'failed'] },
-    { name: 'analyse', jobs: ['pnl', 'stats'] },
-    { name: 'report', jobs: ['table', 'story'] },
+    { name: 'analyse', jobs: ['pnl', 'stats', 'review'] },
+    { name: 'report', jobs: ['table', 'story', 'reflect'] },
   ],
   jobs: {
     terminals: job('success', '1 terminal(s): net.metaquotes.wine.metatrader5'),
@@ -41,8 +41,10 @@ const RUNNING = {
     failed: pending,
     pnl: pending,
     stats: pending,
+    review: pending,
     table: pending,
     story: pending,
+    reflect: pending,
   },
 }
 
@@ -150,7 +152,7 @@ test('while a run works the pane draws its pipeline, logo top left', async ($, o
       expect(String(svgs[0]?.props.alt)).toContain('mascot')
       const pipeline = String(svgs[1]?.props.source)
       expect(pipeline).toContain('<g class="running">')
-      expect(pipeline.match(/<g class=/g)?.length).toBe(10) // a pill per job
+      expect(pipeline.match(/<g class=/g)?.length).toBe(12) // a pill per job
     }
     await ui.unmount()
   }
