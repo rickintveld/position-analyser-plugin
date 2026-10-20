@@ -45,14 +45,14 @@ table, a line per trade on how it went and what stands out.
 In Claude Code, add the marketplace and install the plugin from it:
 
 ```
-/plugin marketplace add rickintveld/position-analyser-plugin
+/plugin marketplace add https://github.com/rickintveld/position-analyser-plugin
 /plugin install rocket@trading-rocket
 ```
 
 Or from a shell:
 
 ```
-claude plugin marketplace add rickintveld/position-analyser-plugin
+claude plugin marketplace add https://github.com/rickintveld/position-analyser-plugin
 claude plugin install rocket@trading-rocket
 ```
 
